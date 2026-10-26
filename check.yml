@@ -1,0 +1,38 @@
+name: Uniqlo price check
+
+on:
+  schedule:
+    - cron: "0 */3 * * *"   # 3時間ごと（UTC基準。日本時間でも3時間おき）
+  workflow_dispatch:
+    inputs:
+      test_notify:
+        description: "LINEにテスト通知を送る"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Check price
+        env:
+          LINE_CHANNEL_ACCESS_TOKEN: ${{ secrets.LINE_CHANNEL_ACCESS_TOKEN }}
+          LINE_USER_ID: ${{ secrets.LINE_USER_ID }}
+          TEST_NOTIFY: ${{ inputs.test_notify }}
+        run: python check_price.py
+      - name: Commit price state
+        run: |
+          if [ -n "$(git status --porcelain price.json)" ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add price.json
+            git commit -m "update price"
+            git push
+          fi
