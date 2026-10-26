@@ -58,7 +58,14 @@ def fetch_price():
         s = row.get("size", {}).get("displayCode")
         found.append(f"色{c}/サイズ{s}")
         if norm(c) == norm(COLOR) and norm(s) == norm(SIZE):
-            prices = row["prices"]
+            # 価格は行の中、または result.prices（l2Id をキー）のどちらかに入っている
+            result = body["result"]
+            prices = row.get("prices") or (result.get("prices") or {}).get(str(row.get("l2Id")))
+            if not prices:
+                raise RuntimeError(
+                    f"価格が見つかりません。行のキー: {sorted(row.keys())} / "
+                    f"resultのキー: {sorted(result.keys())} / 行の内容: {json.dumps(row, ensure_ascii=False)[:500]}"
+                )
             current = (prices.get("promo") or prices["base"])["value"]
             return fetch_name(), int(current)
     raise RuntimeError(
@@ -79,7 +86,7 @@ def line_push(text):
 
 def main():
     if os.environ.get("TEST_NOTIFY") == "true":
-        line_push("✅ UNIQLO 絵本コレクション パジャマ/ミッフィーの値下げ通知のテストです。LINE連携は正常です。")
+        line_push("✅ ユニクロ値下げ通知のテストです。LINE連携は正常です。")
         print("test message sent")
 
     name, price = fetch_price()
